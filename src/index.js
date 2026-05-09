@@ -24,9 +24,17 @@ app.post('/api/usuarios/nuevoUsuario', async (req, res) => {
         // El BFF puede validar o limpiar los datos antes de enviarlos
         // Por ejemplo, asegurar que el email sea minúscula
         if (datosFormulario.email) {
+            datosFormulario.email=datosFormulario.email.trim();
             datosFormulario.email = datosFormulario.email.toLowerCase();
         }
-        
+        if(datosFormulario.password){
+            datosFormulario.password=datosFormulario.password.trim();
+            datosFormulario.password=datosFormulario.password.toLowerCase();
+        }
+        if(datosFormulario.nombre){
+            datosFormulario.nombre=datosFormulario.nombre.trim();
+            datosFormulario.nombre=datosFormulario.nombre.toLowerCase()
+        }
         const enviarDatos={
             nombre: datosFormulario.nombre,
             email: datosFormulario.email,
@@ -100,6 +108,26 @@ app.get('/api/necesidades', async (req, res) => {
             detalles: mensajeError
         });
         console.error('Error al obtener necesidades:', error.message);
+    }
+});
+
+// --- REGISTRAR DONACIÓN ---
+app.post('/api/donaciones/donar', async (req, res) => {
+    try {
+        const datosDonacion = req.body;
+        const response = await axios.post(`${GATEWAY_URL}/donaciones/donar`, datosDonacion);
+        res.status(response.status).json({
+            message: "Donación registrada exitosamente",
+            data: response.data
+        });
+    } catch (error) {
+        const statusCode = error.response ? error.response.status : 500;
+        const mensajeError = error.response ? error.response.data : "Error interno del servidor";
+        res.status(statusCode).json({
+            error: "No se pudo registrar la donación",
+            detalles: mensajeError
+        });
+        console.error('Error al registrar donación:', error.message);
     }
 });
 
