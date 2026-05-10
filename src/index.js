@@ -12,7 +12,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-const GATEWAY_URL = process.env.GATEWAY_URL || (process.env.IN_DOCKER ? 'http://host.docker.internal:8086' : 'http://localhost:8086');
+GATEWAY_URL="http://host.docker.internal:8086";
 
 app.use(cors());
 app.use(helmet({
