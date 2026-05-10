@@ -150,3 +150,101 @@ app.get('/api/usuarios/:id', async (req, res) => {
         console.error('Error al obtener usuario:', error.message);
     }
 });
+
+// --- OBTENER HISTORIAL DE DONACIONES ---
+app.get('/api/donaciones', async (req, res) => {
+    try {
+        const response = await axios.get(`${GATEWAY_URL}/donaciones`);
+        res.status(response.status).json({
+            message: "Historial de donaciones obtenido exitosamente",
+            data: response.data
+        });
+    } catch (error) {
+        const statusCode = error.response ? error.response.status : 500;
+        const mensajeError = error.response ? error.response.data : "Error interno del servidor";
+        res.status(statusCode).json({
+            error: "No se pudo obtener el historial de donaciones",
+            detalles: mensajeError
+        });
+        console.error('Error al obtener historial de donaciones:', error.message);
+    }
+});
+
+// --- ELIMINAR DONACIÓN ---
+app.delete('/api/donaciones/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const response = await axios.delete(`${GATEWAY_URL}/donaciones/${id}`);
+        res.status(response.status).json({
+            message: "Donación eliminada exitosamente",
+            data: response.data
+        });
+    } catch (error) {
+        const statusCode = error.response ? error.response.status : 500;
+        const mensajeError = error.response ? error.response.data : "Error interno del servidor";
+        res.status(statusCode).json({
+            error: "No se pudo eliminar la donación",
+            detalles: mensajeError
+        });
+        console.error('Error al eliminar donación:', error.message);
+    }
+});
+
+// --- OBTENER ENVÍOS DE LOGÍSTICA ---
+app.get('/api/logistica', async (req, res) => {
+    try {
+        const response = await axios.get(`${GATEWAY_URL}/logistica`);
+        res.status(response.status).json({
+            message: "Envíos de logística obtenidos exitosamente",
+            data: response.data
+        });
+    } catch (error) {
+        const statusCode = error.response ? error.response.status : 500;
+        const mensajeError = error.response ? error.response.data : "Error interno del servidor";
+        res.status(statusCode).json({
+            error: "No se pudieron obtener los envíos de logística",
+            detalles: mensajeError
+        });
+        console.error('Error al obtener envíos de logística:', error.message);
+    }
+});
+
+// --- REGISTRAR ENVÍO DE LOGÍSTICA ---
+app.post('/api/logistica', async (req, res) => {
+    try {
+        const datosEnvio = req.body;
+        const response = await axios.post(`${GATEWAY_URL}/logistica`, datosEnvio);
+        res.status(response.status).json({
+            message: "Envío de logística registrado exitosamente",
+            data: response.data
+        });
+    } catch (error) {
+        const statusCode = error.response ? error.response.status : 500;
+        const mensajeError = error.response ? error.response.data : "Error interno del servidor";
+        res.status(statusCode).json({
+            error: "No se pudo registrar el envío de logística",
+            detalles: mensajeError
+        });
+        console.error('Error al registrar envío de logística:', error.message);
+    }
+});
+
+// --- ELIMINAR NECESIDAD ---
+app.delete('/api/necesidades/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const response = await axios.delete(`${GATEWAY_URL}/necesidades/${id}`);
+        res.status(response.status).json({
+            message: "Necesidad eliminada exitosamente",
+            data: response.data
+        });
+    } catch (error) {
+        const statusCode = error.response ? error.response.status : 500;
+        const mensajeError = error.response ? error.response.data : "Error interno del servidor";
+        res.status(statusCode).json({
+            error: "No se pudo eliminar la necesidad",
+            detalles: mensajeError
+        });
+        console.error('Error al eliminar necesidad:', error.message);
+    }
+});
