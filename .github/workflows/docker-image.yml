@@ -1,0 +1,48 @@
+name: CI/CD BFF - Node.js
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "bff/**"
+
+jobs:
+  build-push-deploy-bff:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciales AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login a Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build y Push BFF a ECR
+        run: |
+          cd bff
+          docker build -t bff-app .
+          docker tag bff-app:latest ${{ secrets.ECR_REPO_BFF }}:latest
+          docker push ${{ secrets.ECR_REPO_BFF }}:latest
+
+      - name: Desplegar BFF en EC2 vía SSM
+        run: |
+          aws ssm send-command \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --comment "Actualizar BFF" \
+            --parameters '{"commands":[
+              "set -e",
+              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
+              "docker pull ${{ secrets.ECR_REPO_BFF }}:latest",
+              "docker stop bff || true",
+              "docker rm bff || true",
+              "docker run -d --name bff -p 4000:4000 ${{ secrets.ECR_REPO_BFF }}:latest"
+            ]}' \
+            --output text
