@@ -2,7 +2,7 @@ name: Deploy BFF Donaton
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   workflow_dispatch:
 
 jobs:
@@ -52,6 +52,6 @@ jobs:
               "docker pull ${{ secrets.ECR_REGISTRY }}/bff-donaton:latest",
               "docker stop bff-node || true",
               "docker rm bff-node || true",
-              "docker run -d --name bff-node -p 4000:4000 -e GATEWAY_URL=http://<IP_PRIVADA_EC2_BACKEND>:8086 ${{ secrets.ECR_REGISTRY }}/bff-donaton:latest",
+              "docker run -d --name bff-node -p 4000:4000 -e GATEWAY_URL=http://${{ secrets.PRIVADA_EC2_BACKEND }}:8086 ${{ secrets.ECR_REGISTRY }}/bff-donaton:latest",
               "docker image prune -f"
             ]}'
