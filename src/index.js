@@ -7,7 +7,7 @@ require('dotenv').config();
 const app=express();
 const PORT=process.env.PORT || 4000;
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'], // ambos puertos por si acaso
+    origin: ['http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173'], // ambos puertos por si acaso
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
