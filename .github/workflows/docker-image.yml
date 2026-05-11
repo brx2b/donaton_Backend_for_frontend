@@ -1,48 +1,57 @@
-name: CI/CD BFF - Node.js
+name: Deploy BFF Donaton
 
 on:
   push:
-    branches: [ "main" ]
-    paths:
-      - "bff/**"
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
 jobs:
-  build-push-deploy-bff:
+  build-and-push:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout código
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configurar credenciales AWS
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login a Amazon ECR
+      - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build y Push BFF a ECR
+      - name: Build and Push
         run: |
-          cd bff
-          docker build -t bff-app .
-          docker tag bff-app:latest ${{ secrets.ECR_REPO_BFF }}:latest
-          docker push ${{ secrets.ECR_REPO_BFF }}:latest
+          IMAGE_URI="${{ secrets.ECR_REGISTRY }}/bff-donaton:latest"
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
 
-      - name: Desplegar BFF en EC2 vía SSM
+  deploy-public:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Execute Deploy on Public EC2
         run: |
           aws ssm send-command \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --instance-ids ${{ secrets.EC2_PUBLIC_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --comment "Actualizar BFF" \
+            --comment "Desplegando BFF en Puerto 4000" \
             --parameters '{"commands":[
-              "set -e",
               "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
-              "docker pull ${{ secrets.ECR_REPO_BFF }}:latest",
-              "docker stop bff || true",
-              "docker rm bff || true",
-              "docker run -d --name bff -p 4000:4000 ${{ secrets.ECR_REPO_BFF }}:latest"
-            ]}' \
-            --output text
+              "docker pull ${{ secrets.ECR_REGISTRY }}/bff-donaton:latest",
+              "docker stop bff-node || true",
+              "docker rm bff-node || true",
+              "docker run -d --name bff-node -p 4000:4000 -e GATEWAY_URL=http://<IP_PRIVADA_EC2_BACKEND>:8086 ${{ secrets.ECR_REGISTRY }}/bff-donaton:latest",
+              "docker image prune -f"
+            ]}'
