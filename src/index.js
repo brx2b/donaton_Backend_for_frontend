@@ -210,6 +210,7 @@ app.get('/api/donaciones', async (req, res) => {
     }
 });
 
+
 // --- ELIMINAR DONACIÓN ---
 app.delete('/api/donaciones/:id', async (req, res) => {
     try {
