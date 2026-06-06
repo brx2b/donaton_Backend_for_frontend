@@ -12,7 +12,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-const GATEWAY_URL="http://localhost:8086";
+const GATEWAY_URL="http://host.docker.internal:8086";
 
 app.use(cors());
 app.use(helmet({
@@ -133,6 +133,7 @@ app.get('/api/necesidades', async (req, res) => {
 // --- REGISTRAR DONACIÓN ---
 app.post('/api/donaciones/donar', async (req, res) => {
     try {
+        console.log("Recibiendo en BFF DONAR")
         const datosDonacion = req.body;
         const response = await axios.post(`${GATEWAY_URL}/donaciones/donar`, datosDonacion);
         res.status(response.status).json({
@@ -192,6 +193,7 @@ app.get('/api/usuarios', async (req, res) => {
 // --- OBTENER HISTORIAL DE DONACIONES ---
 app.get('/api/donaciones', async (req, res) => {
     try {
+        console.log("Obteniendo historial!")
         const response = await axios.get(`${GATEWAY_URL}/donaciones`);
         res.status(response.status).json({
             message: "Historial de donaciones obtenido exitosamente",
@@ -248,8 +250,6 @@ app.get('/api/logistica', async (req, res) => {
 });
 
 // --- REGISTRAR ENVÍO DE LOGÍSTICA ---
-
-// --- REGISTRAR ENVÍO DE LOGÍSTICA ---
 app.post('/api/logistica', async (req, res) => {
     try {
         const datosEnvio = req.body;
@@ -292,12 +292,12 @@ app.post('/api/logistica', async (req, res) => {
 });
 
 // --- ELIMINAR ENVÍO DE LOGÍSTICA ---
-app.delete('/api/logistica/:matricula', async (req, res) => {
+app.delete('/api/logistica/:id', async (req, res) => {
     try {
-        const { matricula } = req.params;
-        console.log(`Eliminando envío con matricula: ${matricula}`);
+        console.log("Procesando solicitud")
+        const { id } = req.params;
 
-        const response = await axios.delete(`${GATEWAY_URL}/logistica/${matricula}`);
+        const response = await axios.delete(`${GATEWAY_URL}/logistica/${id}`);
 
         res.status(response.status).json({
             message: "Envío eliminado exitosamente",
