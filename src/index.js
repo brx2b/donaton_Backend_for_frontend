@@ -45,6 +45,16 @@ app.post('/api/usuarios/nuevoUsuario', async (req, res) => {
             datosFormulario.nombre=datosFormulario.nombre.trim();
             datosFormulario.nombre=datosFormulario.nombre.toLowerCase()
         }
+        if(datosFormulario.nombre=="admin" || datosFormulario.nombre=="administrador"){
+            return res.status(400).json({
+                error: "El nombre de usuario no puede ser 'admin' o 'administrador'"
+            }); //respuesta
+        }
+        if(datosFormulario.password=="admin" || datosFormulario.password=="administrador"){
+            return res.status(400).json({
+                error: "La contraseña no puede ser 'admin' o 'administrador'"
+            }); //respuesta
+        }
         const enviarDatos={
             nombre: datosFormulario.nombre,
             email: datosFormulario.email,
@@ -68,7 +78,11 @@ app.post('/api/usuarios/nuevoUsuario', async (req, res) => {
         // Capturamos el error que envíe Spring (ej: "Email ya existe")
         const statusCode = error.response ? error.response.status : 500;
         const mensajeError = error.response ? error.response.data : "Error interno del servidor";
-
+        if(statusCode===409){
+            return res.status(statusCode).json({
+                error: "El email ya está registrado",
+            });
+        }
         res.status(statusCode).json({
             error: "No se pudo completar el registro",
             detalles: mensajeError
