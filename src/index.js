@@ -2,28 +2,54 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const axios = require('axios');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-const app=express();
-const PORT=process.env.PORT || 4000;
+const app = express();
+const PORT = process.env.PORT || 4000;
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173',"http://52.87.217.73","http://52.87.217.73:4000"], // ambos puertos por si acaso
+    origin: ['http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173','http://52.87.217.73','http://52.87.217.73:4000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-const GATEWAY_URL="http://host.docker.internal:8086";
+const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:8086";
 
-app.use(cors());
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for dev
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+const getTokenFromRequest = (req) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        return authHeader.substring(7);
+    }
+    return req.cookies?.token || null;
+};
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Gateway URL: ${GATEWAY_URL}`);
 });
+// Middleware para proteger rutas en el BFF
+const verificarTokenBFF = (req, res, next) => {
+    const token = getTokenFromRequest(req);
+
+    if (!token) {
+        return res.status(401).json({
+            error: "No autorizado",
+            detalles: "Debes iniciar sesión para realizar esta acción."
+        });
+    }
+
+    req.tokenValido = token;
+
+    //si todo va bien, la ejecución continua
+    next();
+};
 
 // --- REGISTRO DE NUEVO USUARIO ---
 app.post('/api/usuarios/nuevoUsuario', async (req, res) => {
@@ -90,19 +116,31 @@ app.post('/api/usuarios/nuevoUsuario', async (req, res) => {
     }
 
 });
+//LOGIN DE USUARIO
 app.post('/api/usuarios/login', async (req, res) => {
     try{
         const datosFormularioLogin=req.body;
         console.log("Enviando datos")
-        const response= await axios.post(`${GATEWAY_URL}/usuarios/login`,{
-            nombre:datosFormularioLogin.nombre,
-            password:datosFormularioLogin.password
+        const response = await axios.post(`${GATEWAY_URL}/usuarios/login`,{
+            nombre: datosFormularioLogin.nombre,
+            password: datosFormularioLogin.password
         });
+
+        const tokenJWT = response.data.token;
+        const nombreUsuario = response.data.usuario;
+        const rolUsuario = response.data.rol;
+        const userId=response.data.id;
+        res.cookie('token', tokenJWT, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'strict',
+            maxAge: 1000 * 60 * 60 * 24 // 1 día
+        });
+
         res.status(response.status).json({
-            message:"login exitoso",
-            data:response.data,
-            
-        }); 
+            message: "login exitoso",
+            data: response.data
+        });
         
     } catch (error) {
         const statusCode = error.response ? error.response.status : 500;
@@ -123,6 +161,20 @@ app.post('/api/usuarios/login', async (req, res) => {
             detalles: mensajeError
         });
     }
+});
+// --- LOGOUT DE USUARIO ---
+app.post('/api/usuarios/logout', (req, res) => {
+    // Al meter res.clearCookie, el navegador elimina el token al instante
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: false, 
+        sameSite: 'strict',
+        path: '/' // Importante para que limpie la cookie en toda la app
+    });
+
+    return res.status(200).json({ 
+        message: "Sesión cerrada y cookies eliminadas exitosamente" 
+    });
 });
 
 // --- LISTAR NECESIDADES ---
@@ -145,31 +197,57 @@ app.get('/api/necesidades', async (req, res) => {
 });
 
 // --- REGISTRAR DONACIÓN ---
-app.post('/api/donaciones/donar', async (req, res) => {
+app.post('/api/donaciones/donar', verificarTokenBFF, async (req, res) => {
     try {
-        console.log("Recibiendo en BFF DONAR")
+        console.log("Recibiendo petición en BFF DONAR");
         const datosDonacion = req.body;
-        const response = await axios.post(`${GATEWAY_URL}/donaciones/donar`, datosDonacion);
+        
+        // 1. Capturar el token que fue validado por middleware
+        const token = req.tokenValido || getTokenFromRequest(req); 
+
+        console.log(`Token a propagar: ${token ? token.substring(0, 20) + "..." : "NINGUNO"}`);
+        console.log(`Redirigiendo al Gateway: ${GATEWAY_URL}/donaciones/donar`);
+
+        // 2. Propagar la petición a Spring Boot incluyendo el token en las cabeceras
+        const response = await axios.post(`${GATEWAY_URL}/donaciones/donar`, datosDonacion, {
+            headers: {
+                "Content-Type": "application/json",
+                ...(token && { Authorization: `Bearer ${token}` })
+            }
+        });
+
+        // 3. Responder al frontend con el éxito del microservicio
         res.status(response.status).json({
             message: "Donación registrada exitosamente",
             data: response.data
         });
+
     } catch (error) {
         const statusCode = error.response ? error.response.status : 500;
         const mensajeError = error.response ? error.response.data : "Error interno del servidor";
+        
+        // Log ultra detallado en tu consola de Node para no adivinar fallos
+        console.error('❌ Error al registrar donación en el Backend:', error.message);
+        if (error.response) {
+            console.error('Detalles devueltos por Spring:', error.response.data);
+        }
+
         res.status(statusCode).json({
             error: "No se pudo registrar la donación",
             detalles: mensajeError
         });
-        console.error('Error al registrar donación:', error.message);
     }
 });
 
 // --- OBTENER UN USUARIO POR ID ---
-app.get('/api/usuarios/:id', async (req, res) => {
+app.get('/api/usuarios/:id', verificarTokenBFF,async (req, res) => {
     try {
         const { id } = req.params;
-        const response = await axios.get(`${GATEWAY_URL}/usuarios/${id}`);
+        const response = await axios.get(`${GATEWAY_URL}/usuarios/${id}`,{
+            headers:{
+                'Authorization':`Bearer ${getTokenFromRequest(req)}`
+            }
+        });
         res.status(response.status).json({
             message: "Usuario obtenido exitosamente",
             data: response.data
@@ -186,9 +264,21 @@ app.get('/api/usuarios/:id', async (req, res) => {
 });
 
 // --- OBTENER TODOS LOS USUARIOS ---
-app.get('/api/usuarios', async (req, res) => {
+app.get('/api/usuarios', verificarTokenBFF, async (req, res) => {
     try {
-        const response = await axios.get(`${GATEWAY_URL}/usuarios`);
+        const token = getTokenFromRequest(req);
+
+        if (!token) {
+            return res.status(401).json({
+                error: "No se proporcionó token de autenticación"
+            });
+        }
+
+        const response = await axios.get(`${GATEWAY_URL}/usuarios`,{
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         res.status(response.status).json({
             message: "Usuarios obtenidos exitosamente",
             data: response.data
@@ -205,10 +295,15 @@ app.get('/api/usuarios', async (req, res) => {
 });
 
 // --- OBTENER HISTORIAL DE DONACIONES ---
-app.get('/api/donaciones', async (req, res) => {
+app.get('/api/donaciones', verificarTokenBFF, async (req, res) => {
     try {
         console.log("Obteniendo historial!")
-        const response = await axios.get(`${GATEWAY_URL}/donaciones`);
+        const token = req.tokenValido;
+        const response = await axios.get(`${GATEWAY_URL}/donaciones`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         res.status(response.status).json({
             message: "Historial de donaciones obtenido exitosamente",
             data: response.data
@@ -226,7 +321,7 @@ app.get('/api/donaciones', async (req, res) => {
 
 
 // --- ELIMINAR DONACIÓN ---
-app.delete('/api/donaciones/:id', async (req, res) => {
+app.delete('/api/donaciones/:id',verificarTokenBFF,  async (req, res) => {
     try {
         const { id } = req.params;
         const response = await axios.delete(`${GATEWAY_URL}/donaciones/${id}`);
@@ -246,7 +341,7 @@ app.delete('/api/donaciones/:id', async (req, res) => {
 });
 
 // --- OBTENER ENVÍOS DE LOGÍSTICA ---
-app.get('/api/logistica', async (req, res) => {
+app.get('/api/logistica',verificarTokenBFF, async (req, res) => {
     try {
         const response = await axios.get(`${GATEWAY_URL}/logistica`);
         res.status(response.status).json({
@@ -265,7 +360,7 @@ app.get('/api/logistica', async (req, res) => {
 });
 
 // --- REGISTRAR ENVÍO DE LOGÍSTICA ---
-app.post('/api/logistica', async (req, res) => {
+app.post('/api/logistica',verificarTokenBFF, async (req, res) => {
     try {
         const datosEnvio = req.body;
         
@@ -307,7 +402,7 @@ app.post('/api/logistica', async (req, res) => {
 });
 
 // --- ELIMINAR ENVÍO DE LOGÍSTICA ---
-app.delete('/api/logistica/:id', async (req, res) => {
+app.delete('/api/logistica/:id',verificarTokenBFF, async (req, res) => {
     try {
         console.log("Procesando solicitud")
         const { id } = req.params;
@@ -332,7 +427,7 @@ app.delete('/api/logistica/:id', async (req, res) => {
 });
 
 // --- ELIMINAR NECESIDAD ---
-app.delete('/api/necesidades/:id', async (req, res) => {
+app.delete('/api/necesidades/:id',verificarTokenBFF, async (req, res) => {
     try {
         const { id } = req.params;
         const response = await axios.delete(`${GATEWAY_URL}/necesidades/${id}`);
@@ -350,3 +445,4 @@ app.delete('/api/necesidades/:id', async (req, res) => {
         console.error('Error al eliminar necesidad:', error.message);
     }
 });
+
