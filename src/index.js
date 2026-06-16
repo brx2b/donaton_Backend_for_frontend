@@ -13,7 +13,7 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-const GATEWAY_URL = process.env.GATEWAY_URL || "http://localhost:8086";
+const GATEWAY_URL = process.env.GATEWAY_URL || "http://host.docker.internal:8086";
 
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for dev
