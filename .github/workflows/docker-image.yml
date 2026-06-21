@@ -49,9 +49,9 @@ jobs:
             --comment "Desplegando BFF en Puerto 4000" \
             --parameters '{"commands":[
               "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
-              "docker pull ${{ secrets.ECR_REGISTRY }}/donatonbff:latest",
+              "docker pull ${{ secrets.ECR_REGISTRY }}:latest",
               "docker stop bff-node || true",
               "docker rm bff-node || true",
-              "docker run -d --name bff-node -p 4000:4000 -e GATEWAY_URL=http://${{ secrets.PRIVADA_EC2_BACKEND }}:8081 ${{ secrets.ECR_REGISTRY }}/bff-donaton:latest",
+              "docker run -d --name bff-node -p 4000:4000 -e GATEWAY_URL=http://${{ secrets.PRIVADA_EC2_BACKEND }}:8081 ${{ secrets.ECR_REGISTRY }}:latest",
               "docker image prune -f"
             ]}'
