@@ -446,3 +446,10 @@ app.delete('/api/necesidades/:id',verificarTokenBFF, async (req, res) => {
     }
 });
 
+// --- HEALTH CHECK PARA EL BALANCEADOR DE CARGA ---
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'UP',
+        message: 'El BFF está vivo y funcionando correctamente' 
+    });
+});
