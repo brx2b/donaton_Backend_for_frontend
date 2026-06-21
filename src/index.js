@@ -8,15 +8,15 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173','http://52.87.217.73','http://52.87.217.73:4000'],
+    origin: ["http://13.222.223.222",'http://10.0.140.143','http://10.0.158.181','http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173','http://52.87.217.73','http://52.87.217.73:4000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-const GATEWAY_URL = process.env.GATEWAY_URL || "http://host.docker.internal:8086";
+const GATEWAY_URL = process.env.GATEWAY_URL || "http://10.0.158.181:8081";
 
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP for dev
+  contentSecurityPolicy: false, 
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -377,7 +377,7 @@ app.post('/api/logistica',verificarTokenBFF, async (req, res) => {
 
         const response = await axios.post(`${GATEWAY_URL}/logistica/nuevaLogistica`, datosEnvio);
 
-        console.log("✅ Respuesta del Gateway:", response.status);
+        console.log("Respuesta del Gateway:", response.status);
 
         res.status(response.status).json({
             message: "Envío de logística registrado exitosamente",
