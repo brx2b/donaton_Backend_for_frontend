@@ -25,7 +25,7 @@ jobs:
 
       - name: Build and Push
         run: |
-          IMAGE_URI="${{ secrets.ECR_REGISTRY }}/donatonbff:latest"
+          IMAGE_URI="${{ secrets.ECR_REGISTRY }}:latest"
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
 
