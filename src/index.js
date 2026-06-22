@@ -8,12 +8,12 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 app.use(cors({
-    origin: ["52.91.255.222","http://13.222.223.222","10.0.158.181",'http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173','http://52.87.217.73','http://52.87.217.73:4000'],
+    origin: ["http://52.87.176.66","http://13.222.223.222","10.0.158.181",'http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173','http://52.87.217.73','http://52.87.217.73:4000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-const GATEWAY_URL = process.env.GATEWAY_URL || "http://10.0.158.181:8081";
+const GATEWAY_URL = process.env.GATEWAY_URL || "http://52.87.176.66:8081";
 
 app.use(helmet({
   contentSecurityPolicy: false, 
