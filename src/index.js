@@ -8,12 +8,13 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 app.use(cors({
-    origin: ['http://54.152.15.95','http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173','http://52.87.217.73:4000'],
+    origin: ['http://34.229.89.119','http://localhost:5173', 'http://localhost:5174','http://52.87.217.73:5173','http://52.87.217.73:4000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
-const GATEWAY_URL = "http://10.0.129.96:8086" || "http://localhost:8086";
+const GATEWAY_URL = process.env.GATEWAY_URL || "http://10.0.129.96:8086";
+console.log(`Gateway URL: ${GATEWAY_URL}`);
 //"http://host.docker.internal:8086"
 app.use(helmet({
   contentSecurityPolicy: false, 
