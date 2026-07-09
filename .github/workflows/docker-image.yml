@@ -25,7 +25,7 @@ jobs:
 
       - name: Build and Push
         run: |
-          IMAGE_URI="${{ secrets.ECR_REGISTRY }}/donatonbff:latest"
+          IMAGE_URI="${{ secrets.ECR_REGISTRY }}/donatonback/api-bff:latest"
           docker build -t $IMAGE_URI .
           docker push $IMAGE_URI
 
@@ -41,17 +41,19 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Execute Deploy on Public EC2
+      - name: Desplegar bff en ec2 publica
         run: |
+          IMAGE_URI="${{ secrets.ECR_REGISTRY }}/donatonback/api-bff:latest"
           aws ssm send-command \
-            --instance-ids ${{ secrets.EC2_PUBLIC_INSTANCE_ID }} \
+            --instance-ids "${{ secrets.EC2_PUBLIC_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "Desplegando BFF en Puerto 4000" \
-            --parameters '{"commands":[
-              "aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
-              "docker pull ${{ secrets.ECR_REGISTRY }}/donatonbff:latest",
-              "docker stop bff-node || true",
-              "docker rm bff-node || true",
-              "docker run -d --name bff-node -p 4000:4000 -e GATEWAY_URL=http://${{ secrets.PRIVADA_EC2_BACKEND }}:8081 ${{ secrets.ECR_REGISTRY }}/donatonbff:latest",
-              "docker image prune -f"
-            ]}'
+            --parameters "{\"commands\":[
+              \"set -e\",
+              \"aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}\",
+              \"sudo docker pull $IMAGE_URI\",
+              \"sudo docker stop bff-node || true\",
+              \"sudo docker rm bff-node || true\",
+              \"sudo docker run -d --name bff-node -p 4000:4000 -e GATEWAY_URL=http://${{ secrets.GATEWAY_PRIVATE_IP }}:8086 $IMAGE_URI\",
+              \"sudo docker image prune -f\"
+            ]}"
